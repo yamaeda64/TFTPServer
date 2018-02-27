@@ -1,9 +1,9 @@
 
 
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.SocketException;
+import java.io.IOException;
+import java.net.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class TFTPServer
 {
@@ -33,9 +33,13 @@ public class TFTPServer
         }
         catch (SocketException e)
         {e.printStackTrace();}
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
     }
     
-    private void start() throws SocketException
+    private void start() throws SocketException, IOException
     {
         byte[] buf= new byte[BUFSIZE];
         
@@ -103,14 +107,15 @@ public class TFTPServer
      * @param buf (where to store the read data)
      * @return socketAddress (the socket address of the client)
      */
-    private InetSocketAddress receiveFrom(DatagramSocket socket, byte[] buf)
+    private InetSocketAddress receiveFrom(DatagramSocket socket, byte[] buf) throws IOException
     {
         // Create datagram packet
+        DatagramPacket datagramPacket = new DatagramPacket(buf,buf.length);
         
         // Receive packet
-        
+        socket.receive(datagramPacket);
         // Get client address and port from the packet
-        
+        InetSocketAddress socketAddress = new InetSocketAddress(datagramPacket.getAddress(),datagramPacket.getPort());
         return socketAddress;
     }
     
@@ -123,7 +128,15 @@ public class TFTPServer
      */
     private int ParseRQ(byte[] buf, StringBuffer requestedFile)
     {
-        // See "TFTP Formats" in TFTP specification for the RRQ/WRQ request contents
+        ByteBuffer byteBuffer = ByteBuffer.allocate(4); // since Integer is 4 bytes
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        byteBuffer.put((byte)0x00);
+        byteBuffer.put((byte)0x00);
+        byteBuffer.put(buf,0,2);
+        int opcode = byteBuffer.getInt();
+        
+        System.out.println("from parser -- OPCODE: " + opcode);
+        // See "TFTP Formats" in TFTP specification for the RRQ/WRQ contents
         
         return opcode;
     }

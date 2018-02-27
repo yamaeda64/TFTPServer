@@ -1,0 +1,88 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1561\cocoasubrtf200
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Monaco;\f2\fswiss\fcharset0 Helvetica-Bold;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red102\green177\blue50;\red63\green105\blue30;
+\red255\green255\blue51;\red255\green255\blue255;\red38\green38\blue38;\red242\green242\blue242;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c46532\c73327\c25364;\cssrgb\c30831\c47797\c15540;
+\cssrgb\c99946\c98636\c25320;\cssrgb\c100000\c100000\c100000;\cssrgb\c20000\c20000\c20000;\cssrgb\c96078\c96078\c96078;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\f0\fs26 \cf2 \cb3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 - Get listening on the predefined port by implementing a receiveFrom() method.\cf4 \cb1 \uc0\u8232 \cf0 \cb5 - Parse a read request by implementing a ParseRQ() method.\cf2 \cb6  Once receiveFrom() has received a message, we must parse it in order to get the information (type of request, requested file, transfer mode). The first 2 bytes of the message contains the opcode indicating type of request. The following approach reads two bytes at a given address and converts it to an unsigned short:\
+\pard\pardeftab720\sl400\partightenfactor0
+
+\f1 \cf7 \cb8 \strokec7  import java.nio.ByteBuffer;\
+ byte[] buf;\
+ ByteBuffer wrap= ByteBuffer.wrap(buf);\
+ short opcode = wrap.getShort();\
+ // We can now parse the request message for opcode and requested file as:\
+ fileName = new String(buf, 2, readBytes-2) // 
+\f0 where readBytes is the number of bytes read into the byte array buf.
+\f1 \
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\f0\b \cf2 \cb6 \strokec2 \'a0Note:
+\b0 \'a0the problem of parsing the part of request containing the transfer mode should be solved by yourself.\cb1 \uc0\u8232 \cb6 - Once the parsing is done, we can test our program by sending a read request from the client and printing out the opcode (should be 1), requested file and the transfer mode (should be octet).\cb1 \uc0\u8232 \cb6 - Implement code that opens the requested file.\'a0
+\i Hint
+\i0 : before you can open the file you must add the path (variable READDIR) to the received filename.\cb1 \uc0\u8232 \cb6 - Build a response: add opcode for data (OP_DATA) and block number (1), each an unsigned short of 2 bytes in a network byte order. We suggest a similar approach as for parsing the buffer:\
+\pard\pardeftab720\sl400\partightenfactor0
+
+\f1 \cf7 \cb8 \strokec7  byte[] buf;\
+ short shortVal = OP_DATA;\
+ ByteBuffer wrap = ByteBuffer.wrap(buf);\
+ short opcode = wrap.putShort(shortVal);\
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\f0 \cf2 \cb6 \strokec2 - Read a maximum of 512 bytes from the open file, add it to the response buffer and send it to the client.\
+- If everything works, the client will respond with an acknowledgment (ACK) of your first package. Receive ACK and parse it.\
+It is now time for a crucial test: make a read request from the client (request to read a file that is shorter than 512 bytes) and check that everything works properly.\'a0Include resulting\'a0
+\b screenshot
+\b0 \'a0in your report.\
+After successfully reading the requests, examine the\'a0TFTPServer starter code once more and explain in your report why we used both\'a0
+\i socket
+\i0 \'a0and\'a0
+\i sendSocket
+\i0 .\'a0\
+\pard\pardeftab720\sl800\sa200\partightenfactor0
+
+\f2\b\fs36 \cf2 Problem 2\
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\f0\b0\fs26 \cf2 Add a functionality that makes it possible to handle files larger than 512 bytes. Include resulting\'a0
+\b screenshot
+\b0 \'a0with sending multiple large file in your report.\cb1 \uc0\u8232 \cb6 \
+Implement the\'a0timeout functionality. In case of a read request, this means that we should use a timer when sending a packet. If no acknowledgment has arrived before the time expires, we re-transmit the previous packet and start the timer once again. If an acknowledgment of the wrong packet arrives (check the block number), we also re-transmit.\'a0
+\i\fs27\fsmilli13600 Hint
+\i0\fs26 : make sure that the program does not stuck in the endless re-transmissions.\'a0\
+Once read requests work properly, implement the part that handles write requests.\'a0Include resulting\'a0
+\b screenshot\'a0
+\b0 in your report.\
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\b \cf2 VG-task 1:
+\b0 \'a0You must capture and analyze traffic between machines during a read request using Wireshark.\'a0Include resulting screenshots and explain the results in your report. The explanation should include a line-by-line analysis of what is displayed on the Wireshark screenshot including the contents of each packet.\'a0Finally, answer the following question: what is the difference between a read and a write request? Include a confirming Wireshark screenshot in your report.\
+\pard\pardeftab720\sl800\sa200\partightenfactor0
+
+\f2\b\fs36 \cf2 Problem 3\
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\f0\b0\fs26 \cf2 Implement the TFTP error handling for error codes 0, 1, 2 and 6 (see RFC1350 specification). Include resulting\'a0
+\b screenshots
+\b0 \'a0with those exceptions in your report.\'a0\
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\i \cf2 Hint
+\i0 : RFC1350 specifies a particular type of packets used to transport error messages as well as several error codes and err messages. For example, an error message should be sent if the client wants to read a file that doesn\'92t exist (errcode = 1, errmsg = File not found), or if the client wants to write to a file that already exists (errcode = 6, errmsg = File already exist).\'a0More generally, an error message should be sent every time the server wants to exit a connection. Remember also to check all packets that arrive to see if it is an error message. If that is the case, the client is dead and the server should exit the connection.\
+\pard\pardeftab720\sl300\sa200\partightenfactor0
+
+\b \cf2 Note:\'a0
+\b0 \'93Access violation\'94 or \'93No such user\'94 errors are related to UNIX file permission / ownership model. It is OK if your implementation returns one of these codes on generic IOException (after checking the cases for codes 1 and 6).\'a0\
+
+\b VG-task 2:
+\b0 \'a0From the remaining error codes, implement 3, 4, and 5. You should be able to demonstrate/reproduce the error code for 3 and 4. For error code 5, an explanation of your implementation will suffice, but you are welcome to try to reproduce the error.\'a0Include resulting\'a0
+\b screenshots
+\b0 \'a0with those exceptions in your report.\
+Note: \'93Illegal TFTP operation\'94 error is related to client trying to send something other than valid RRQ/WRQ request code.\'a0As for the \'93Invalid Transfer ID\'94, your implementation doesn\'92t have to explicitly send that data structure, but you still have access to (remote port, local port) values for each packet. After connection initialization, server and client are communicating via arbitrary ports X and Y (in \'93ephemeral\'94 port range). Therefore, you can imagine a situation when \'93ACK\'94 message arrives from a client, but from a port Z that was not previously used in that particular communication session. In such a situation, server should send an error response with error code 5\
+}
