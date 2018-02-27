@@ -128,15 +128,31 @@ public class TFTPServer
      */
     private int ParseRQ(byte[] buf, StringBuffer requestedFile)
     {
+        /* Parse the OpCode */
         ByteBuffer byteBuffer = ByteBuffer.allocate(4); // since Integer is 4 bytes
-        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
         byteBuffer.put((byte)0x00);
         byteBuffer.put((byte)0x00);
         byteBuffer.put(buf,0,2);
+        byteBuffer.flip();
         int opcode = byteBuffer.getInt();
         
         System.out.println("from parser -- OPCODE: " + opcode);
+        
+        /* Parse the filename */
+        boolean loop = true;
+        int index = 1;
+        while(loop)
+        {
+            index++;
+          if(buf[index]== 0)
+          {
+              loop = false;
+          }
+        }
+        requestedFile.append(new String(buf,2,index-2));
         // See "TFTP Formats" in TFTP specification for the RRQ/WRQ contents
+        System.out.println("Filename = "+ requestedFile);
         
         return opcode;
     }
