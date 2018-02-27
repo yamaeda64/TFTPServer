@@ -1,6 +1,7 @@
-
-
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -62,8 +63,11 @@ public class TFTPServer
             if (clientAddress == null)
                 continue;
             
-            final StringBuffer requestedFile= new StringBuffer();
-            final int reqtype = ParseRQ(buf, requestedFile);
+            final StringBuffer requestedFile = new StringBuffer();
+            
+            final TransferMode transferMode = TransferMode.ILLEGAL;
+            final int reqtype = ParseRQ(buf, requestedFile,transferMode);
+            System.out.println("outside: " + requestedFile);
             
             new Thread()
             {
@@ -78,7 +82,7 @@ public class TFTPServer
                         
                         System.out.printf("%s request for %s from %s using port %d\n",
                                 (reqtype == OP_RRQ)?"Read":"Write",
-                                clientAddress.getHostName(), clientAddress.getPort());
+                                clientAddress.getHostName(), socket.getLocalAddress().getHostAddress(), clientAddress.getPort());
                         
                         // Read request
                         if (reqtype == OP_RRQ)
@@ -95,6 +99,8 @@ public class TFTPServer
                         sendSocket.close();
                     }
                     catch (SocketException e)
+                    {e.printStackTrace();}
+                    catch (IOException e)
                     {e.printStackTrace();}
                 }
             }.start();
@@ -126,33 +132,50 @@ public class TFTPServer
      * @param requestedFile (name of file to read/write)
      * @return opcode (request type: RRQ or WRQ)
      */
-    private int ParseRQ(byte[] buf, StringBuffer requestedFile)
+    private int ParseRQ(byte[] buf, StringBuffer requestedFile, TransferMode transferMode)
     {
         /* Parse the OpCode */
-        ByteBuffer byteBuffer = ByteBuffer.allocate(4); // since Integer is 4 bytes
+        ByteBuffer byteBuffer = ByteBuffer.allocate(2);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
-        byteBuffer.put((byte)0x00);
-        byteBuffer.put((byte)0x00);
-        byteBuffer.put(buf,0,2);
+        byteBuffer.put(buf, 0, 2);
         byteBuffer.flip();
-        int opcode = byteBuffer.getInt();
-        
-        System.out.println("from parser -- OPCODE: " + opcode);
+        short opcode = byteBuffer.getShort();
+    
+        System.out.println("from parser -- OPCODE: " + opcode);  // TODO, debug line
         
         /* Parse the filename */
-        boolean loop = true;
+        boolean loop = true;            // TODO how to handle to long filenames  (read that default is max 128)
         int index = 1;
         while(loop)
         {
             index++;
-          if(buf[index]== 0)
-          {
-              loop = false;
-          }
+            if(buf[index] == 0)
+            {
+                loop = false;
+            }
         }
-        requestedFile.append(new String(buf,2,index-2));
+        requestedFile.append(new String(buf, 2, index - 2));
         // See "TFTP Formats" in TFTP specification for the RRQ/WRQ contents
-        System.out.println("Filename = "+ requestedFile);
+        System.out.println("Filename = " + requestedFile);  // TODO, debug
+        int modeStartIndex = index + 1;
+        loop = true;
+        while(loop)             // TODO, not tested
+        {
+            index++;
+            if(buf[index] == 0)
+            {
+                loop = false;
+            }
+        }
+        StringBuffer sb = new StringBuffer(new String(buf, modeStartIndex, index - modeStartIndex));
+        System.out.println("Parsed Mode: " + sb.toString());  // TODO, debug
+        try
+        {
+            transferMode = TransferMode.valueOf(sb.toString().toUpperCase());
+        } catch(IllegalArgumentException e)
+        {
+            transferMode = TransferMode.ILLEGAL;
+        }
         
         return opcode;
     }
@@ -164,22 +187,22 @@ public class TFTPServer
      * @param requestedFile (name of file to read/write)
      * @param opcode (RRQ or WRQ)
      */
-    private void HandleRQ(DatagramSocket sendSocket, String requestedFile, int opcode)
+    private void HandleRQ(DatagramSocket sendSocket, String requestedFile, int opcode) throws IOException
     {
         if(opcode == OP_RRQ)
         {
             // See "TFTP Formats" in TFTP specification for the DATA and ACK packet contents
-            boolean result = send_DATA_receive_ACK(params);
+            boolean result = send_DATA_receive_ACK(requestedFile, sendSocket);
         }
         else if (opcode == OP_WRQ)
         {
-            boolean result = receive_DATA_send_ACK(params);
+            boolean result = receive_DATA_send_ACK();
         }
         else
         {
             System.err.println("Invalid request. Sending an error packet.");
             // See "TFTP Formats" in TFTP specification for the ERROR packet contents
-            send_ERR(params);
+            send_ERR();
             return;
         }
     }
@@ -187,13 +210,57 @@ public class TFTPServer
     /**
      To be implemented
      */
-    private boolean send_DATA_receive_ACK(params)
+    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket) throws IOException
+    {
+     
+        File outputfile = new File(requestedFile);
+        System.out.println(outputfile.exists());
+        long remainingFileBytes = outputfile.length();
+        short blockNumber = 1;
+        
+        InputStream inputStream = new FileInputStream(outputfile);
+        
+        System.out.println("fileSize: " + remainingFileBytes);
+        System.out.println(requestedFile);
+        DatagramPacket outputPacket;
+        
+        byte[] buffer = new byte[BUFSIZE];
+       
+       /* Opcode: 2 bytes */
+        ByteBuffer wrap = ByteBuffer.wrap(buffer);
+        wrap.putShort((short)OP_DAT);
+    
+        /* BlockNumber: 2 bytes */
+        wrap.putShort(2,blockNumber);
+        
+        /* Data: 0 - 512 bytes */
+        if(remainingFileBytes < 512)                   // TODO, trigger that datagram is final(internally)
+        {
+            inputStream.read(buffer, 4, (int) remainingFileBytes);
+    
+            for(int i = 0; i < 100; i++)
+            {
+                System.out.print(buffer[i]);
+            }
+            outputPacket = new DatagramPacket(buffer, (int)(remainingFileBytes+4));
+            remainingFileBytes = 0;
+        }
+        else
+        {
+            inputStream.read(buffer,4,512);
+            outputPacket = new DatagramPacket(buffer, 516);
+            remainingFileBytes -= 512;
+        }
+        
+        
+        sendSocket.send(outputPacket);
+        System.out.println("packet sent" + outputPacket.getLength());
+        return true;}
+    
+    private boolean receive_DATA_send_ACK()
     {return true;}
     
-    private boolean receive_DATA_send_ACK(params)
-    {return true;}
-    
-    private void send_ERR(params)
+    private void send_ERR()
     {}
     
 }
