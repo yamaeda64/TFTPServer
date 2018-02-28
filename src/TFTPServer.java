@@ -85,13 +85,13 @@ public class TFTPServer
                         if (reqtype == OP_RRQ)
                         {
                             requestedFile.insert(0, READDIR);
-                            HandleRQ(sendSocket, requestedFile.toString(), OP_RRQ, socket);
+                            HandleRQ(sendSocket, requestedFile.toString(), OP_RRQ);
                         }
                         // Write request
                         else
                         {
                             requestedFile.insert(0, WRITEDIR);
-                            HandleRQ(sendSocket,requestedFile.toString(),OP_WRQ, socket);
+                            HandleRQ(sendSocket,requestedFile.toString(),OP_WRQ);
                         }
                         sendSocket.close();
                     }
@@ -185,13 +185,13 @@ public class TFTPServer
      * @param requestedFile (name of file to read/write)
      * @param opcode (RRQ or WRQ)
      */
-    private void HandleRQ(DatagramSocket sendSocket, String requestedFile, int opcode, DatagramSocket recieveSocket) throws IOException
+    private void HandleRQ(DatagramSocket sendSocket, String requestedFile, int opcode) throws IOException
     {
         
         if(opcode == OP_RRQ)
         {
             // See "TFTP Formats" in TFTP specification for the DATA and ACK packet contents
-            boolean result = send_DATA_receive_ACK(requestedFile, sendSocket, recieveSocket);
+            boolean result = send_DATA_receive_ACK(requestedFile, sendSocket);
         }
         else if (opcode == OP_WRQ)
         {
@@ -209,7 +209,7 @@ public class TFTPServer
     /**
      To be implemented
      */
-    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket, DatagramSocket recieveSocket) throws IOException
+    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket) throws IOException
     {
      
         File outputfile = new File(requestedFile);
