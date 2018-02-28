@@ -2,9 +2,9 @@
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Monaco;\f2\fswiss\fcharset0 Helvetica-Bold;
 }
 {\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red102\green177\blue50;\red63\green105\blue30;
-\red38\green38\blue38;\red255\green255\blue255;\red242\green242\blue242;}
+\red38\green38\blue38;\red255\green255\blue255;}
 {\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c46532\c73327\c25364;\cssrgb\c30831\c47797\c15540;
-\cssrgb\c20000\c20000\c20000;\cssrgb\c100000\c100000\c100000;\cssrgb\c96078\c96078\c96078;}
+\cssrgb\c20000\c20000\c20000;\cssrgb\c100000\c100000\c100000;}
 \paperw11900\paperh16840\margl1440\margr1440\vieww16740\viewh15920\viewkind0
 \deftab720
 \pard\pardeftab720\sl300\sa200\partightenfactor0
@@ -24,22 +24,22 @@
 \pard\pardeftab720\sl300\sa200\partightenfactor0
 
 \f0\b \cf2 \strokec2 \'a0Note:
-\b0 \'a0the problem of parsing the part of request containing the transfer mode should be solved by yourself.\uc0\u8232 - Once the parsing is done, we can test our program by sending a read request from the client and printing out the opcode (should be 1), requested file and the transfer mode (should be octet).\cb1 \uc0\u8232 \cb6 - Implement code that opens the requested file.\'a0
+\b0 \'a0the problem of parsing the part of request containing the transfer mode should be solved by yourself.\uc0\u8232 - Once the parsing is done, we can test our program by sending a read request from the client and printing out the opcode (should be 1), requested file and the transfer mode (should be octet).\cb1 \uc0\u8232 \cb3 - Implement code that opens the requested file.\'a0
 \i Hint
-\i0 : before you can open the file you must add the path (variable READDIR) to the freceived filename.\cb1 \uc0\u8232 \cb6 - Build a response: add opcode for data (OP_DATA) and block number (1), each an unsigned short of 2 bytes in a network byte order. We suggest a similar approach as for parsing the buffer:\
+\i0 : before you can open the file you must add the path (variable READDIR) to the freceived filename.\cb1 \uc0\u8232 \cb3 - Build a response: add opcode for data (OP_DATA) and block number (1), each an unsigned short of 2 bytes in a network byte order. We suggest a similar approach as for parsing the buffer:\
 \pard\pardeftab720\sl400\partightenfactor0
 
-\f1 \cf5 \cb7 \strokec5  byte[] buf;\
+\f1 \cf5 \strokec5  byte[] buf;\
  short shortVal = OP_DATA;\
  ByteBuffer wrap = ByteBuffer.wrap(buf);\
  short opcode = wrap.putShort(shortVal);\
 \pard\pardeftab720\sl300\sa200\partightenfactor0
 
-\f0 \cf2 \cb6 \strokec2 - Read a maximum of 512 bytes from the open file, add it to the response buffer and send it to the client.\
+\f0 \cf2 \strokec2 - Read a maximum of 512 bytes from the open file, add it to the response buffer and send it to the client.\
 - If everything works, the client will respond with an acknowledgment (ACK) of your first package. Receive ACK and parse it.\
 It is now time for a crucial test: make a read request from the client (request to read a file that is shorter than 512 bytes) and check that everything works properly.\'a0Include resulting\'a0
 \b screenshot
-\b0 \'a0in your report.\
+\b0 \'a0in your report.\cb6 \
 After successfully reading the requests, examine the\'a0TFTPServer starter code once more and explain in your report why we used both\'a0
 \i socket
 \i0 \'a0and\'a0

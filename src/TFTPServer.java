@@ -1,7 +1,4 @@
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -88,13 +85,13 @@ public class TFTPServer
                         if (reqtype == OP_RRQ)
                         {
                             requestedFile.insert(0, READDIR);
-                            HandleRQ(sendSocket, requestedFile.toString(), OP_RRQ);
+                            HandleRQ(sendSocket, requestedFile.toString(), OP_RRQ, socket);
                         }
                         // Write request
                         else
                         {
                             requestedFile.insert(0, WRITEDIR);
-                            HandleRQ(sendSocket,requestedFile.toString(),OP_WRQ);
+                            HandleRQ(sendSocket,requestedFile.toString(),OP_WRQ, socket);
                         }
                         sendSocket.close();
                     }
@@ -134,6 +131,7 @@ public class TFTPServer
      */
     private int ParseRQ(byte[] buf, StringBuffer requestedFile, TransferMode transferMode)
     {
+        
         /* Parse the OpCode */
         ByteBuffer byteBuffer = ByteBuffer.allocate(2);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -187,12 +185,13 @@ public class TFTPServer
      * @param requestedFile (name of file to read/write)
      * @param opcode (RRQ or WRQ)
      */
-    private void HandleRQ(DatagramSocket sendSocket, String requestedFile, int opcode) throws IOException
+    private void HandleRQ(DatagramSocket sendSocket, String requestedFile, int opcode, DatagramSocket recieveSocket) throws IOException
     {
+        
         if(opcode == OP_RRQ)
         {
             // See "TFTP Formats" in TFTP specification for the DATA and ACK packet contents
-            boolean result = send_DATA_receive_ACK(requestedFile, sendSocket);
+            boolean result = send_DATA_receive_ACK(requestedFile, sendSocket, recieveSocket);
         }
         else if (opcode == OP_WRQ)
         {
@@ -210,22 +209,20 @@ public class TFTPServer
     /**
      To be implemented
      */
-    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket) throws IOException
+    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket, DatagramSocket recieveSocket) throws IOException
     {
      
         File outputfile = new File(requestedFile);
-        System.out.println(outputfile.exists());
         long remainingFileBytes = outputfile.length();
         short blockNumber = 1;
+        FileInputStream inputStream = new FileInputStream(requestedFile);
         
-        InputStream inputStream = new FileInputStream(outputfile);
-        
-        System.out.println("fileSize: " + remainingFileBytes);
-        System.out.println(requestedFile);
+        System.out.println(requestedFile);  // TODO debug
         DatagramPacket outputPacket;
         
         byte[] buffer = new byte[BUFSIZE];
        
+        
        /* Opcode: 2 bytes */
         ByteBuffer wrap = ByteBuffer.wrap(buffer);
         wrap.putShort((short)OP_DAT);
@@ -237,11 +234,7 @@ public class TFTPServer
         if(remainingFileBytes < 512)                   // TODO, trigger that datagram is final(internally)
         {
             inputStream.read(buffer, 4, (int) remainingFileBytes);
-    
-            for(int i = 0; i < 100; i++)
-            {
-                System.out.print(buffer[i]);
-            }
+            
             outputPacket = new DatagramPacket(buffer, (int)(remainingFileBytes+4));
             remainingFileBytes = 0;
         }
@@ -252,9 +245,21 @@ public class TFTPServer
             remainingFileBytes -= 512;
         }
         
-        
+        /* Send the datagram */
         sendSocket.send(outputPacket);
-        System.out.println("packet sent" + outputPacket.getLength());
+        System.out.println("packet sent, size: " + outputPacket.getLength());
+        
+        /* Recieve ACK */
+        
+        DatagramPacket ack = new DatagramPacket(buffer,buffer.length);
+        sendSocket.receive(ack);
+        
+        System.out.println("recieved DatagramPacket");
+        /* Parse ACK */
+        
+        boolean correctACK = parseACK(buffer,blockNumber);
+        
+        System.out.println("correctACK: " + correctACK);
         return true;}
     
     private boolean receive_DATA_send_ACK()
@@ -263,6 +268,44 @@ public class TFTPServer
     private void send_ERR()
     {}
     
+    /**
+     * Parses an ACK and returns true if the ACK is valid
+     * @param ack the recieved ACK as a byte array
+     * @param currentBlock the number of last sent block number
+     * @return true if vaild ACK otherwise false
+     */
+    private boolean parseACK(byte[] ack, short currentBlock)        // TODO, could be an ERROR (op 5) sent instead of ACK
+    {
+        boolean recievedCorrectACK = false;
+    
+        ByteBuffer byteBuffer = ByteBuffer.allocate(2);
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
+        byteBuffer.put(ack, 0, 2);
+        byteBuffer.flip();
+        short opcode = byteBuffer.getShort();
+        System.out.println("Ack OP code: " + opcode);
+    
+        if(opcode != OP_ACK)
+        {
+            return false;
+        }
+        
+        byteBuffer.clear();
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
+        byteBuffer.put(ack, 2, 2);
+        byteBuffer.flip();
+        short blockNumber = byteBuffer.getShort();
+        
+        System.out.println("BlockNumber: " + blockNumber);
+        if(blockNumber == currentBlock)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
 
 
