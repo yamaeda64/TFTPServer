@@ -157,7 +157,7 @@ public class TFTPServer
         System.out.println("Filename = " + requestedFile);  // TODO, debug
         int modeStartIndex = index + 1;
         loop = true;
-        while(loop)             // TODO, not tested
+        while(loop)
         {
             index++;
             if(buf[index] == 0)
@@ -211,56 +211,66 @@ public class TFTPServer
      */
     private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket) throws IOException
     {
-     
+    
         File outputfile = new File(requestedFile);
         long remainingFileBytes = outputfile.length();
-        short blockNumber = 1;
+        short blockNumber = 0;
         FileInputStream inputStream = new FileInputStream(requestedFile);
-        
+    
         System.out.println(requestedFile);  // TODO debug
         DatagramPacket outputPacket;
-        
+    
         byte[] buffer = new byte[BUFSIZE];
-       
-        
+    
+        while(remainingFileBytes > 0)
+        {
+            blockNumber++;
        /* Opcode: 2 bytes */
-        ByteBuffer wrap = ByteBuffer.wrap(buffer);
-        wrap.putShort((short)OP_DAT);
+            ByteBuffer wrap = ByteBuffer.wrap(buffer);
+            wrap.putShort((short) OP_DAT);
     
         /* BlockNumber: 2 bytes */
-        wrap.putShort(2,blockNumber);
+            wrap.putShort(2, blockNumber);
         
-        /* Data: 0 - 512 bytes */
-        if(remainingFileBytes < 512)                   // TODO, trigger that datagram is final(internally)
-        {
-            inputStream.read(buffer, 4, (int) remainingFileBytes);
-            
-            outputPacket = new DatagramPacket(buffer, (int)(remainingFileBytes+4));
-            remainingFileBytes = 0;
-        }
-        else
-        {
-            inputStream.read(buffer,4,512);
-            outputPacket = new DatagramPacket(buffer, 516);
-            remainingFileBytes -= 512;
-        }
+        /* Data: 0 - 512 bytes */     // TODO, add code if remainingFileBytes is Exactly 512 bytes ( should send all bytes then 0 bytes)
+            if(remainingFileBytes < 512)             // TODO, trigger that datagram is final(internally)
+            {
+                inputStream.read(buffer, 4, (int) remainingFileBytes);
+    
+                outputPacket = new DatagramPacket(buffer, (int) (remainingFileBytes + 4));
+                remainingFileBytes = 0;
+            } else
+            {
+                inputStream.read(buffer, 4, 512);
+                outputPacket = new DatagramPacket(buffer, 516);
+                remainingFileBytes -= 512;
+            }
         
         /* Send the datagram */
-        sendSocket.send(outputPacket);
-        System.out.println("packet sent, size: " + outputPacket.getLength());
+            sendSocket.send(outputPacket);
+            System.out.println("packet sent, size: " + outputPacket.getLength());
         
         /* Recieve ACK */
-        
-        DatagramPacket ack = new DatagramPacket(buffer,buffer.length);
-        sendSocket.receive(ack);
-        
-        System.out.println("recieved DatagramPacket");
+    
+            DatagramPacket ack = new DatagramPacket(buffer, buffer.length);
+            sendSocket.receive(ack);
+    
+            System.out.println("recieved DatagramPacket");
         /* Parse ACK */
-        
-        boolean correctACK = parseACK(buffer,blockNumber);
-        
-        System.out.println("correctACK: " + correctACK);
-        return true;}
+           
+            boolean correctACK = parseACK(buffer, blockNumber);
+    
+            System.out.println("correctACK: " + correctACK);
+            if(correctACK == false)
+            {
+                System.out.println("Error should be sent");
+                
+                send_ERR();
+                break;
+            }
+        }
+        return true;
+    }
     
     private boolean receive_DATA_send_ACK()
     {return true;}
