@@ -1,3 +1,4 @@
+import exceptions.OutsideSourceFolderException;
 import exceptions.WrongOPException;
 
 import java.io.*;
@@ -210,6 +211,14 @@ public class TFTPServer
             {
                 send_ERR(1, sendSocket);
             }
+            catch(OutsideSourceFolderException e)
+            {
+                send_ERR(2, sendSocket);
+            }
+            catch(Exception e)
+            {
+                send_ERR(0, sendSocket);
+            }
         }
         else if (opcode == OP_WRQ)
         {
@@ -221,6 +230,14 @@ public class TFTPServer
             catch(FileAlreadyExistsException e)
             {
                 send_ERR(6, sendSocket);
+            }
+            catch(OutsideSourceFolderException e)
+            {
+                send_ERR(2,sendSocket);
+            }
+            catch(Exception e)
+            {
+                send_ERR(0,sendSocket);
             }
         }
         else
@@ -235,14 +252,23 @@ public class TFTPServer
     /**
      To be implemented
      */
-    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket) throws IOException
+    private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket) throws Exception
     {
         
         File outputfile = new File(requestedFile);
-        if(!outputfile.exists())
+        
+        System.out.println("outputFile: " + outputfile.getCanonicalPath());
+        System.out.println("WRITEDIR: "  + READDIR);
+        if(!outputfile.getCanonicalPath().startsWith(READDIR))
+        {
+            throw new OutsideSourceFolderException("The writing folder was outside the source folder");
+        }
+        else if(!outputfile.exists())
         {
             throw new FileNotFoundException("The file could not be found in source folder");
         }
+        
+        
         long remainingFileBytes = outputfile.length();
         short blockNumber = 0;
         FileInputStream inputStream = new FileInputStream(requestedFile);
@@ -305,10 +331,15 @@ public class TFTPServer
         return true;
     }
     
-    private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket) throws IOException
+    private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket) throws Exception
     {
         File outputFile = new File(requestedFile);
-        if(outputFile.exists())
+        if(!outputFile.getCanonicalPath().startsWith(WRITEDIR))
+        {
+            throw new OutsideSourceFolderException("The writing folder was outside the source folder");
+        }
+        
+        else if(outputFile.exists())
         {
             throw new FileAlreadyExistsException("File already excists");
         }
@@ -376,6 +407,7 @@ public class TFTPServer
     
     private void send_ERR(int errID, DatagramSocket sendSocket) throws IOException
     {
+        System.out.println("Error " + errID + " sent");
         int errorDatagramLength;
         byte[] errorBuffer = new byte[BUFSIZE];
         /* Send initial ACK that WRQ is recieved */
@@ -385,10 +417,14 @@ public class TFTPServer
         /* The blocket number to byte 3-4 of buffer */
         wrap.putShort(2, (short)errID);
         String errorMSG = "";
+        System.out.println("errorBuffer:");
+        System.out.println(errorBuffer[2] +" " + errorBuffer[3]);
+        
+        
         switch(errID)
         {
             case 0:
-                errorMSG = "Not defined";     // TODO, guess we should come up with a extra error check?
+                errorMSG = "There was something wrong with the server.";
                 break;
             case 1:
                 errorMSG = "File not found.";
