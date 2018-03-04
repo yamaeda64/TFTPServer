@@ -14,7 +14,7 @@ public class TFTPServer
     public static final String READDIR = extra.SourceFolder.getReadFolder(); //custom address at your PC
     public static final String WRITEDIR = extra.SourceFolder.getWriteFolder(); //custom address at your PC
     
-    public static TransferMode transferMode;    // Allergic against static (non final) variables, but since one class program I think it's ok
+   
     
     // OP codes
     public static final int OP_RRQ = 1;
@@ -71,7 +71,7 @@ public class TFTPServer
             //  final TransferMode transferMode = TransferMode.ILLEGAL; // initally ILLEGAL, and changed if parsed correctly
             final int reqtype = ParseRQ(buf, requestedFile);
             System.out.println("outside: " + requestedFile);
-            System.out.println("outside: " + transferMode);
+            
             
             new Thread()
             {
@@ -79,6 +79,8 @@ public class TFTPServer
                 {
                     try
                     {
+                        TransferMode transferMode = parseTransferMode(buf);
+                        
                         DatagramSocket sendSocket= new DatagramSocket(0);  // Port 0 makes the port random which is required by TFTP
                         
                         // Connect to client
@@ -89,16 +91,39 @@ public class TFTPServer
                                 clientAddress.getHostName(), sendSocket.getLocalAddress().getHostAddress(), sendSocket.getPort());
                         
                         // Read request
-                        if (reqtype == OP_RRQ)
+                        if (reqtype == OP_RRQ && transferMode == TransferMode.OCTET)
                         {
                             requestedFile.insert(0, READDIR);
                             HandleRQ(sendSocket, requestedFile.toString(), OP_RRQ);
                         }
                         // Write request
-                        else
+                        else if(reqtype == OP_WRQ && transferMode == TransferMode.OCTET)
                         {
                             requestedFile.insert(0, WRITEDIR);
                             HandleRQ(sendSocket,requestedFile.toString(),OP_WRQ);
+                        }
+                        else if(reqtype == OP_ERR)
+                        {
+                            // Don't do anything if input type is error before starting transmission
+                        }
+                        else if(transferMode == TransferMode.ILLEGAL)
+                        {
+                            System.out.println("errorCode Illegal: ");
+                            send_ERR(4, sendSocket);
+                        }
+                        else if(transferMode == TransferMode.NETASCII)
+                        {
+                            
+                            send_ERR(0,sendSocket, "NETASCII mode is not implemented");
+                        }
+                        else if(transferMode == TransferMode.MAIL)
+                        {
+                            send_ERR(0,sendSocket, "MAIL mode is not implemented");
+                        }
+                        else
+                        {
+                            System.out.println("from else...");
+                            send_ERR(4, sendSocket);    // If initial OP is ACK or DATA, send error message 4, Illegal TFTP operation
                         }
                         sendSocket.close();
                     }
@@ -109,6 +134,43 @@ public class TFTPServer
                 }
             }.start();
         }
+    }
+    
+    /* Returns the transfer mode from a WRQ or RRQ */
+    private TransferMode parseTransferMode(byte[] buf)
+    {
+        /* Find the end of filename */
+        boolean loop = true;
+        int index = 1;
+        while(buf[index++] != 0)
+        {
+            
+        }
+  
+        int modeStartIndex = index;
+        loop = true;
+        while(loop)
+        {
+            index++;
+            if(buf[index] == 0)
+            {
+                loop = false;
+            }
+        }
+        StringBuffer sb = new StringBuffer(new String(buf, modeStartIndex, index - modeStartIndex));
+        System.out.println("Parsed Mode: " + sb.toString());  // TODO, debug
+        
+        
+        TransferMode transferMode;
+        try
+        {
+            transferMode = TransferMode.valueOf(sb.toString().toUpperCase());
+        } catch(IllegalArgumentException e)
+        {
+            transferMode = TransferMode.ILLEGAL;
+        }
+        
+        return transferMode;
     }
     
     /**
@@ -177,6 +239,7 @@ public class TFTPServer
         System.out.println("Parsed Mode: " + sb.toString());  // TODO, debug
      
         /*  TODO   NEED TO BE READ SOMEWHERE ELSE, or STATIC variable */
+        /*
         try
         {
             transferMode = TransferMode.valueOf(sb.toString().toUpperCase());
@@ -185,7 +248,7 @@ public class TFTPServer
             transferMode = TransferMode.ILLEGAL;
         }
         
-        
+        */
         
         return opcode;
     }
@@ -256,9 +319,10 @@ public class TFTPServer
     {
         
         File outputfile = new File(requestedFile);
+        System.out.println("free space: " + outputfile.getFreeSpace());
+        System.out.println("usable space: " + outputfile.getUsableSpace());
         
-        System.out.println("outputFile: " + outputfile.getCanonicalPath());
-        System.out.println("WRITEDIR: "  + READDIR);
+        System.out.println("ReadDir: "  + READDIR);
         if(!outputfile.getCanonicalPath().startsWith(READDIR))
         {
             throw new OutsideSourceFolderException("The writing folder was outside the source folder");
@@ -334,6 +398,11 @@ public class TFTPServer
     private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket) throws Exception
     {
         File outputFile = new File(requestedFile);
+        System.out.println("free space: " + outputFile.getFreeSpace());
+        System.out.println("usable space: " + outputFile.getUsableSpace());
+        System.out.println("TotalSpace" + outputFile.getTotalSpace());
+        System.out.println("outputFile: " + outputFile.getCanonicalPath());
+        
         if(!outputFile.getCanonicalPath().startsWith(WRITEDIR))
         {
             throw new OutsideSourceFolderException("The writing folder was outside the source folder");
@@ -359,6 +428,11 @@ public class TFTPServer
             DatagramPacket data = new DatagramPacket(buffer, buffer.length);
             sendSocket.receive(data);
             
+            if(outputFile.getFreeSpace() - data.getLength() < 0)
+            {
+                send_ERR(3, sendSocket);
+                return false;
+            }
             System.out.println("recieved data: ");
             for(int i = 0; i< data.getLength(); i++)
             {
@@ -410,11 +484,11 @@ public class TFTPServer
         System.out.println("Error " + errID + " sent");
         int errorDatagramLength;
         byte[] errorBuffer = new byte[BUFSIZE];
-        /* Send initial ACK that WRQ is recieved */
+        
         ByteBuffer wrap = ByteBuffer.wrap(errorBuffer);
-        /* The Op to the first 2 bytes of buffer */
+        
         wrap.putShort((short) OP_ERR);
-        /* The blocket number to byte 3-4 of buffer */
+        
         wrap.putShort(2, (short)errID);
         String errorMSG = "";
         System.out.println("errorBuffer:");
@@ -445,6 +519,33 @@ public class TFTPServer
                 errorMSG = "File already exists.";
                 break;
         }
+        
+        for(int i = 0; i<errorMSG.length(); i++)
+        {
+            errorBuffer[i+4] = (byte)errorMSG.charAt(i);
+        }
+        errorBuffer[4+errorMSG.length()] = 0;
+        errorDatagramLength = errorMSG.length() +5;
+        
+        DatagramPacket outputDatagram = new DatagramPacket(errorBuffer, errorDatagramLength);
+        sendSocket.send(outputDatagram);
+    }
+    
+    /* Overridden method to ad an own error message */
+    private void send_ERR(int errID, DatagramSocket sendSocket, String errorMSG) throws IOException
+    {
+        System.out.println("Error " + errID + " sent");
+        int errorDatagramLength;
+        byte[] errorBuffer = new byte[BUFSIZE];
+        ByteBuffer wrap = ByteBuffer.wrap(errorBuffer);
+        /* The Op to the first 2 bytes of buffer */
+        wrap.putShort((short) OP_ERR);
+        
+        wrap.putShort(2, (short)errID);
+       
+        System.out.println("errorBuffer:");
+        System.out.println(errorBuffer[2] +" " + errorBuffer[3]);
+        
         
         for(int i = 0; i<errorMSG.length(); i++)
         {
