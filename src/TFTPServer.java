@@ -371,37 +371,51 @@ public class TFTPServer
                 outputPacket = new DatagramPacket(buffer, 516);
                 remainingFileBytes -= 512;
             }
-        
-        /* Send the datagram */
+
+            /* Send the datagram */
+            sendSocket.setSoTimeout(3000); // 3 seconds
+            byte[] ACKBuffer = new byte[BUFSIZE];
+            int packetsSent = 1;
+
             sendSocket.send(outputPacket);
             System.out.println("packet sent, size: " + outputPacket.getLength());
-        
-        /* Recieve ACK */
-            
-            DatagramPacket ack = new DatagramPacket(buffer, buffer.length);
-            sendSocket.receive(ack);
-            
-            System.out.println("recieved DatagramPacket");
-        /* Parse ACK */
-        
-        /* Check if the port and address is same as original client */
-            if(ack.getSocketAddress().equals(orgClientAddress))
-            {
-                System.out.println("Packet did not come from original sender");
-                DatagramSocket tempSocket = new DatagramSocket(ack.getSocketAddress());
-                send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
-            }
-            else
-            {
-                try
-                {
-                    boolean correctACK = parseACK(buffer, blockNumber);
-                } catch(WrongOPException e)
-                {
-                    // TODO, handle what op is incoming, probably an ERROR
-                }
-            }
-            
+
+            boolean correctACK = false;
+            while(!correctACK) {
+            	DatagramPacket ack = new DatagramPacket(ACKBuffer, ACKBuffer.length);
+            	try {
+            		sendSocket.receive(ack);
+            		System.out.println("Received ACK");
+
+            		if(ack.getSocketAddress().equals(orgClientAddress))
+            		{
+            			System.out.println("Packet did not come from original sender");
+            			DatagramSocket tempSocket = new DatagramSocket(ack.getSocketAddress());
+            			send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
+            		} else {
+            			correctACK = parseACK(buffer,blockNumber);
+            			// Resends packet if incorrect ACK
+            			if(!correctACK) {
+            				sendSocket.send(outputPacket);
+            				System.out.println("Incorrect ACK, sent packet again, size: " + outputPacket.getLength());
+            			}
+            		}
+            		// Resends packets if socket timed out (nothing received for x seconds)
+            	} catch (SocketTimeoutException e) {
+            		System.out.println("SocketTimeoutException thrown");
+            		sendSocket.send(outputPacket);
+            		System.out.println("packet sent again, size: " + outputPacket.getLength());
+            	} catch (WrongOPException woe) {
+            		// TODO, handle what op is incoming, probably an ERROR
+            	}
+            	packetsSent++;
+
+            	// Returns false if 5 packets were sent but no correct ACK were received or socket timed out 5 times
+            	if(packetsSent == 5) {
+            		System.out.println("5 packets were sent, stopped sending more packets");
+            		return false;
+            	}
+            } 
         }
         return true;
     }
