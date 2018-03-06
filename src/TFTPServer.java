@@ -6,6 +6,7 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
 
 public class TFTPServer
 {
@@ -319,11 +320,9 @@ public class TFTPServer
     {
         
         File outputfile = new File(requestedFile);
-        
         System.out.println("free space: " + outputfile.getFreeSpace());
         System.out.println("usable space: " + outputfile.getUsableSpace());
-        
-        System.out.println("ReadDir: "  + READDIR);
+
         if(!outputfile.getCanonicalPath().startsWith(READDIR))
         {
             throw new OutsideSourceFolderException("The writing folder was outside the source folder");
@@ -387,13 +386,13 @@ public class TFTPServer
             		sendSocket.receive(ack);
             		System.out.println("Received ACK");
 
-            		if(ack.getSocketAddress().equals(orgClientAddress))
+            		if(ack.getPort() != orgClientAddress.getPort())
             		{
             			System.out.println("Packet did not come from original sender");
             			DatagramSocket tempSocket = new DatagramSocket(ack.getSocketAddress());
             			send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
             		} else {
-            			correctACK = parseACK(buffer,blockNumber);
+            			correctACK = parseACK(ACKBuffer,blockNumber);
             			// Resends packet if incorrect ACK
             			if(!correctACK) {
             				sendSocket.send(outputPacket);
@@ -406,6 +405,7 @@ public class TFTPServer
             		sendSocket.send(outputPacket);
             		System.out.println("packet sent again, size: " + outputPacket.getLength());
             	} catch (WrongOPException woe) {
+            		System.out.println("WRONG OP EXCEPTION"); // TODO: Ta bort
             		// TODO, handle what op is incoming, probably an ERROR
             	}
             	packetsSent++;
@@ -604,12 +604,11 @@ public class TFTPServer
         byteBuffer.flip();
         short opcode = byteBuffer.getShort();
         System.out.println("Ack OP code: " + opcode);
-        
+       
         if(opcode != OP_ACK)
         {
             throw new WrongOPException(""+opcode);
         }
-        
         
         byteBuffer.clear();
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
