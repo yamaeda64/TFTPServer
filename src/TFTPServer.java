@@ -80,6 +80,11 @@ public class TFTPServer
                System.out.println("Incoming stating packet was wrong OP");
                continue;
            }
+           catch(Exception e)
+           {
+               System.out.println("Unhandled error on server while reading initial request");
+               continue;
+           }
             System.out.println("outside: " + requestedFile);
             
             
