@@ -6,7 +6,6 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 
 public class TFTPServer
 {
@@ -70,7 +69,22 @@ public class TFTPServer
             final StringBuffer requestedFile = new StringBuffer();
             
             //  final TransferMode transferMode = TransferMode.ILLEGAL; // initally ILLEGAL, and changed if parsed correctly
-            final int reqtype = ParseRQ(buf, requestedFile);
+           int reqtype;
+           
+           try
+           {
+               reqtype = ParseRQ(buf, requestedFile);
+           }
+           catch(WrongOPException e)
+           {
+               System.out.println("Incoming stating packet was wrong OP");
+               continue;
+           }
+           catch(Exception e)
+           {
+               System.out.println("Unhandled error on server while reading initial request");
+               continue;
+           }
             System.out.println("outside: " + requestedFile);
             
             
@@ -82,7 +96,7 @@ public class TFTPServer
                     {
                         TransferMode transferMode = parseTransferMode(buf);
                        
-                        DatagramSocket sendSocket= new DatagramSocket(0);  // Port 0 makes the port random which is required by TFTP
+                        DatagramSocket sendSocket= new DatagramSocket(0);  // Port 0 makes the port "random" which is required by TFTP
                         
                         // Connect to client
                         sendSocket.connect(clientAddress);
@@ -103,10 +117,6 @@ public class TFTPServer
                             requestedFile.insert(0, WRITEDIR);
                             HandleRQ(sendSocket,requestedFile.toString(),OP_WRQ, clientAddress);
                         }
-                        else if(reqtype == OP_ERR)
-                        {
-                            // Don't do anything if input type is error before starting transmission
-                        }
                         else if(transferMode == TransferMode.ILLEGAL)
                         {
                             System.out.println("errorCode Illegal: ");
@@ -124,7 +134,7 @@ public class TFTPServer
                         else
                         {
                             System.out.println("from else...");
-                            send_ERR(4, sendSocket);    // If initial OP is ACK or DATA, send error message 4, Illegal TFTP operation
+                            send_ERR(0, sendSocket, "Unhandled error");
                         }
                         sendSocket.close();
                     }
@@ -200,7 +210,7 @@ public class TFTPServer
      * @param requestedFile (name of file to read/write)
      * @return opcode (request type: RRQ or WRQ)
      */
-    private int ParseRQ(byte[] buf, StringBuffer requestedFile)
+    private int ParseRQ(byte[] buf, StringBuffer requestedFile) throws WrongOPException
     {
         
         /* Parse the OpCode */
@@ -209,6 +219,10 @@ public class TFTPServer
         byteBuffer.put(buf, 0, 2);
         byteBuffer.flip();
         short opcode = byteBuffer.getShort();
+        if(opcode < 1 || opcode > 2)
+        {
+            throw new WrongOPException("Unexpected OP");
+        }
         
         System.out.println("from parser -- OPCODE: " + opcode);  // TODO, debug line
         
@@ -381,9 +395,13 @@ public class TFTPServer
 
             boolean correctACK = false;
             while(!correctACK) {
+                System.out.println(1);
             	DatagramPacket ack = new DatagramPacket(ACKBuffer, ACKBuffer.length);
+                System.out.println(2);
             	try {
+                   
             		sendSocket.receive(ack);
+            		
             		System.out.println("Received ACK");
 
             		if(ack.getPort() != orgClientAddress.getPort())
@@ -459,7 +477,7 @@ public class TFTPServer
                 send_ERR(3, sendSocket);
                 if(outputFile.exists())
                 {
-                    outputFile.delete();    // Remove the not completely sent file to avoid faulty files
+                    outputFile.delete();     // Remove the not completely sent file to avoid faulty files
                 }
                 return false;
             }
