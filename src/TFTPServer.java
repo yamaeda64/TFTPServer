@@ -476,7 +476,8 @@ public class TFTPServer
 		while(hasMoreData)
 		{
 			blockNumber++;
-
+			
+			
 			/* Recieve the packet */
 			DatagramPacket data = new DatagramPacket(buffer, buffer.length);
 			sendSocket.receive(data);
@@ -484,8 +485,10 @@ public class TFTPServer
 			// Check if data comes from the intended original sender
 			if(data.getPort() != orgClientAddress.getPort())
 			{
-				System.out.println("Packet did not come from original sender");
-				DatagramSocket tempSocket = new DatagramSocket(data.getSocketAddress());
+				DatagramSocket tempSocket = new DatagramSocket(null);
+				SocketAddress tempAddress = new InetSocketAddress(0);
+				SocketAddress incorrectClient = data.getSocketAddress();
+				tempSocket.connect(incorrectClient);
 				send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
 			}
 			else
