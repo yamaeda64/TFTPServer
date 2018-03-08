@@ -13,14 +13,14 @@ public class TFTPServer
 	public static final int BUFSIZE = 516;
 	public static final String READDIR = extra.SourceFolder.getReadFolder(); //custom address at your PC
 	public static final String WRITEDIR = extra.SourceFolder.getWriteFolder(); //custom address at your PC
-
+	
 	// OP codes
 	public static final int OP_RRQ = 1;
 	public static final int OP_WRQ = 2;
 	public static final int OP_DAT = 3;
 	public static final int OP_ACK = 4;
 	public static final int OP_ERR = 5;
-
+	
 	public static void main(String[] args) {
 		if (args.length > 0)
 		{
@@ -41,34 +41,34 @@ public class TFTPServer
 			e.printStackTrace();
 		}
 	}
-
+	
 	private void start() throws SocketException, IOException
 	{
 		byte[] buf = new byte[BUFSIZE];
-
+		
 		// Create socket
 		DatagramSocket socket = new DatagramSocket(null);
-
+		
 		// Create local bind point
 		SocketAddress localBindPoint = new InetSocketAddress(TFTPPORT);
 		socket.bind(localBindPoint);
-
+		
 		System.out.printf("Listening at port %d for new requests\n", TFTPPORT);
-
+		
 		// Loop to handle client requests
 		while (true)
 		{
 			final InetSocketAddress clientAddress = receiveFrom(socket, buf);
-
+			
 			// If clientAddress is null, an error occurred in receiveFrom()
 			if (clientAddress == null)
 				continue;
-
+			
 			final StringBuffer requestedFile = new StringBuffer();
-
+			
 			//  final TransferMode transferMode = TransferMode.ILLEGAL; // initally ILLEGAL, and changed if parsed correctly
 			int reqtype;
-
+			
 			try
 			{
 				reqtype = ParseRQ(buf, requestedFile);
@@ -77,6 +77,7 @@ public class TFTPServer
 			{
 				System.out.println("Incoming starting packet was wrong OP");
 				continue;
+				
 			}
 			catch(Exception e)
 			{
@@ -84,7 +85,7 @@ public class TFTPServer
 				continue;
 			}
 			System.out.println("outside: " + requestedFile);
-
+			
 			new Thread()
 			{
 				public void run()
@@ -92,17 +93,17 @@ public class TFTPServer
 					try
 					{
 						TransferMode transferMode = parseTransferMode(buf);
-
+						
 						DatagramSocket sendSocket = new DatagramSocket(0);  // Port 0 makes the port "random" which is required by TFTP
-
+						
 						System.out.println(clientAddress);
 						// Connect to client
 						sendSocket.connect(clientAddress);
-
+						
 						System.out.printf("%s request for %s from %s using port %d\n",
 								(reqtype == OP_RRQ)?"Read":"Write",
-										clientAddress.getHostName(), sendSocket.getLocalAddress().getHostAddress(), sendSocket.getPort());
-
+								clientAddress.getHostName(), sendSocket.getLocalAddress().getHostAddress(), sendSocket.getPort());
+						
 						// Read request
 						if (reqtype == OP_RRQ && transferMode == TransferMode.OCTET)
 						{
@@ -122,7 +123,7 @@ public class TFTPServer
 						}
 						else if(transferMode == TransferMode.NETASCII)
 						{
-
+							
 							send_ERR(0,sendSocket, "NETASCII mode is not implemented");
 						}
 						else if(transferMode == TransferMode.MAIL)
@@ -144,7 +145,7 @@ public class TFTPServer
 			}.start();
 		}
 	}
-
+	
 	/* Returns the transfer mode from a WRQ or RRQ */
 	private TransferMode parseTransferMode(byte[] buf)
 	{
@@ -153,9 +154,9 @@ public class TFTPServer
 		int index = 1;
 		while(buf[index++] != 0)
 		{
-
+			
 		}
-
+		
 		int modeStartIndex = index;
 		loop = true;
 		while(loop)
@@ -168,7 +169,7 @@ public class TFTPServer
 		}
 		StringBuffer sb = new StringBuffer(new String(buf, modeStartIndex, index - modeStartIndex));
 		System.out.println("Parsed Mode: " + sb.toString());  // TODO, debug
-
+		
 		TransferMode transferMode;
 		try
 		{
@@ -177,10 +178,10 @@ public class TFTPServer
 		{
 			transferMode = TransferMode.ILLEGAL;
 		}
-
+		
 		return transferMode;
 	}
-
+	
 	/**
 	 * Reads the first block of data, i.e., the request for an action (read or write).
 	 * @param socket (socket to read from)
@@ -191,7 +192,7 @@ public class TFTPServer
 	{
 		// Create datagram packet
 		DatagramPacket datagramPacket = new DatagramPacket(buf, buf.length);
-
+		
 		// Receive packet
 		socket.receive(datagramPacket);
 		// Get client address and port from the packet
@@ -201,7 +202,7 @@ public class TFTPServer
 		
 		return socketAddress;
 	}
-
+	
 	/**
 	 * Parses the request in buf to retrieve the type of request and requestedFile
 	 *
@@ -229,7 +230,7 @@ public class TFTPServer
 		{
 			throw new WrongOPException("Unexpected OP");
 		}
-
+		
 		System.out.println("from parser -- OPCODE: " + opcode);  // TODO, debug line
 
 		/* Parse the filename */
@@ -270,10 +271,10 @@ public class TFTPServer
         }
 
 		 */
-
+		
 		return opcode;
 	}
-
+	
 	/**
 	 * Handles RRQ and WRQ requests
 	 *
@@ -298,6 +299,10 @@ public class TFTPServer
 			{
 				send_ERR(2, sendSocket);
 			}
+			catch(WrongOPException e)
+			{
+				
+			}
 			catch(Exception e)
 			{
 				System.out.println("EXCEPTION: " + e.getMessage()); // TODO: Ta bort
@@ -319,6 +324,10 @@ public class TFTPServer
 			{
 				send_ERR(2,sendSocket);
 			}
+			catch(WrongOPException e)
+			{
+				
+			}
 			catch(Exception e)
 			{
 				send_ERR(0,sendSocket);
@@ -332,17 +341,17 @@ public class TFTPServer
 			return;
 		}
 	}
-
+	
 	/**
-     To be implemented
+	 To be implemented
 	 */
-	private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress) throws Exception
+	private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress) throws OutsideSourceFolderException, IOException, WrongOPException
 	{
-
+		
 		File outputfile = new File(requestedFile);
 		System.out.println("free space: " + outputfile.getFreeSpace());
 		System.out.println("usable space: " + outputfile.getUsableSpace());
-
+		
 		if(!outputfile.getCanonicalPath().startsWith(READDIR))
 		{
 			throw new OutsideSourceFolderException("The writing folder was outside the source folder");
@@ -351,16 +360,16 @@ public class TFTPServer
 		{
 			throw new FileNotFoundException("The file could not be found in source folder");
 		}
-
+		
 		long remainingFileBytes = outputfile.length();
 		short blockNumber = 0;
 		FileInputStream inputStream = new FileInputStream(requestedFile);
-
+		
 		System.out.println(requestedFile);  // TODO debug
 		DatagramPacket outputPacket;
-
+		
 		byte[] buffer = new byte[BUFSIZE];
-
+		
 		while(remainingFileBytes >= 0)
 		{
 			blockNumber++;
@@ -380,7 +389,7 @@ public class TFTPServer
 			} else if(remainingFileBytes < 512)
 			{
 				inputStream.read(buffer, 4, (int) remainingFileBytes);
-
+				
 				outputPacket = new DatagramPacket(buffer, (int) (remainingFileBytes + 4));
 				remainingFileBytes = -1; // End of filetransmission
 			} else
@@ -394,21 +403,21 @@ public class TFTPServer
 			sendSocket.setSoTimeout(3000); // 3 seconds
 			byte[] ACKBuffer = new byte[BUFSIZE];
 			int packetsSent = 1;
-
+			
 			sendSocket.send(outputPacket);
 			System.out.println("packet sent, size: " + outputPacket.getLength());
 			System.out.println("Sent blockNumber: " + blockNumber);
-
+			
 			boolean correctACK = false;
 			while(!correctACK) {
 				System.out.println(1);
 				DatagramPacket ack = new DatagramPacket(ACKBuffer, ACKBuffer.length);
 				System.out.println(2);
-
+				
 				try {
 					sendSocket.receive(ack);
 					System.out.println("Received ACK");
-
+					
 					if(ack.getPort() != orgClientAddress.getPort())
 					{
 						System.out.println("Packet did not come from original sender");
@@ -431,12 +440,11 @@ public class TFTPServer
 					sendSocket.send(outputPacket);
 					System.out.println("packet sent again, size: " + outputPacket.getLength());
 					System.out.println("Sent blockNumber: " + blockNumber);
-				} catch (WrongOPException woe) {
-					System.out.println("WRONG OP EXCEPTION"); // TODO: Ta bort
-					// TODO, handle what op is incoming, probably an ERROR
+				} catch (WrongOPException e) {
+					throw new WrongOPException("Not the expected OP", buffer);
 				}
 				packetsSent++;
-
+				
 				// Returns false if 5 packets were sent but no correct ACK were received or socket timed out 5 times
 				if(packetsSent == 5) {
 					System.out.println("5 packets were sent, stopped sending more packets");
@@ -446,8 +454,8 @@ public class TFTPServer
 		}
 		return true;
 	}
-
-	private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress) throws Exception
+	
+	private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress) throws IOException, OutsideSourceFolderException, WrongOPException
 	{
 		File outputFile = new File(requestedFile);
 		System.out.println("paretn size: " + outputFile.getParentFile().getFreeSpace());
@@ -455,79 +463,105 @@ public class TFTPServer
 		System.out.println("usable space: " + outputFile.getUsableSpace());
 		System.out.println("TotalSpace" + outputFile.getTotalSpace());
 		System.out.println("outputFile: " + outputFile.getCanonicalPath());
-
+		
 		if(!outputFile.getCanonicalPath().startsWith(WRITEDIR))
 		{
 			throw new OutsideSourceFolderException("The writing folder was outside the source folder");
 		}
-
+		
 		else if(outputFile.exists())
 		{
 			throw new FileAlreadyExistsException("File already excists");
 		}
-
+		
 		byte[] buffer = new byte[BUFSIZE];
 		short blockNumber = 0;
-
+		
 		sendAck(sendSocket, blockNumber);
 
 		/* Start the recieve packet and return ACK loop */
 		boolean hasMoreData = true;
+		System.out.println("StartGettingDATA");
 		while(hasMoreData)
 		{
 			blockNumber++;
-			
-			
+			System.out.println("Block#: " + blockNumber);
+			int attemts = 0;
+			boolean correctRecieve = false;
+			sendSocket.setSoTimeout(3000);
+			while(attemts++ < 5 && correctRecieve == false )
+			{
+				System.out.println("New attemt nr: " + attemts);
 			/* Recieve the packet */
-			DatagramPacket data = new DatagramPacket(buffer, buffer.length);
-			sendSocket.receive(data);
-
-			// Check if data comes from the intended original sender
-			if(data.getPort() != orgClientAddress.getPort())
-			{
-				DatagramSocket tempSocket = new DatagramSocket(null);
-				SocketAddress tempAddress = new InetSocketAddress(0);
-				SocketAddress incorrectClient = data.getSocketAddress();
-				tempSocket.connect(incorrectClient);
-				send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
-			}
-			else
-			{
-				if(outputFile.getParentFile().getFreeSpace() - data.getLength() < 0)
+				DatagramPacket data = new DatagramPacket(buffer, buffer.length);
+				try
 				{
-					send_ERR(3, sendSocket);
-					if(outputFile.exists())
+					sendSocket.receive(data);
+					
+					
+					// Check if data comes from the intended original sender
+					if(data.getPort() != orgClientAddress.getPort())
 					{
-						outputFile.delete();     // Remove the not completely sent file to avoid faulty files
+						DatagramSocket tempSocket = new DatagramSocket(null);
+						SocketAddress tempAddress = new InetSocketAddress(0);
+						SocketAddress incorrectClient = data.getSocketAddress();
+						tempSocket.connect(incorrectClient);
+						send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
 					}
-					return false;
+					else
+					{
+						if(outputFile.getParentFile().getFreeSpace() - data.getLength() < 0)
+						{
+							send_ERR(3, sendSocket);
+							if(outputFile.exists())
+							{
+								outputFile.delete();     // Remove the not completely sent file to avoid faulty files
+							}
+							return false;
+						}
+						
+						System.out.println("recieved data: ");
+						for(int i = 0; i < data.getLength(); i++)
+						{
+							System.out.print(buffer[i]);
+						}
+						
+						boolean recievedData = parseAndWriteData(buffer, blockNumber, requestedFile, data.getLength());
+						System.out.println("Data was recieved" + recievedData);
+						
+						if(recievedData)
+						{
+							sendAck(sendSocket, blockNumber);
+							correctRecieve = true;
+							System.out.println("correctRecieve");
+							
+							
+							if(data.getLength() < 512)
+							{
+								hasMoreData = false;
+								System.out.println("no more data");
+							} else
+							{
+								hasMoreData = true;
+								System.out.println("has more data");
+							}
+						}
+					}
 				}
-
-				System.out.println("recieved data: ");
-				for(int i = 0; i< data.getLength(); i++)
+				catch(SocketTimeoutException e)
 				{
-					System.out.print(buffer[i]);
+					continue;
 				}
-
-				boolean recievedData = parseAndWriteData(buffer, blockNumber, requestedFile, data.getLength());
-				if(recievedData)
-				{
-					sendAck(sendSocket,blockNumber);
-				}
-
-				if(data.getLength()<512)
-				{
-					hasMoreData = false;
-				}
-				else
-				{
-					hasMoreData = true;
-				}
+				
+			}
+			if(attemts >= 5)
+			{
+				return false;
 			}
 		}
 		return true;
 	}
-
+	
 	private void sendAck(DatagramSocket sendSocket, short blockNumber) throws IOException
 	{
 		byte[] ackBuffer = new byte[4];
@@ -538,31 +572,30 @@ public class TFTPServer
 		wrap.putShort((short) OP_ACK);
 		/* The blocket number to byte 3-4 of buffer */
 		wrap.putShort(2, blockNumber);
-
+		
 		System.out.println("OP: " + ackBuffer[1]);
-		for(int i = 0; i<4; i++)
-		{
-			System.out.println(ackBuffer[i]);
-		}
+	
 		DatagramPacket outputDatagram = new DatagramPacket(ackBuffer, 4);
+		System.out.println("created AckPacket");
 		sendSocket.send(outputDatagram);
+		System.out.println("Sent Datagram to socket");
 	}
-
+	
 	private void send_ERR(int errID, DatagramSocket sendSocket) throws IOException
 	{
 		System.out.println("Error " + errID + " sent");
 		int errorDatagramLength;
 		byte[] errorBuffer = new byte[BUFSIZE];
-
+		
 		ByteBuffer wrap = ByteBuffer.wrap(errorBuffer);
-
+		
 		wrap.putShort((short) OP_ERR);
-
+		
 		wrap.putShort(2, (short)errID);
 		String errorMSG = "";
 		System.out.println("errorBuffer:");
 		System.out.println(errorBuffer[2] +" " + errorBuffer[3]);
-
+		
 		switch(errID)
 		{
 			case 0:
@@ -587,44 +620,44 @@ public class TFTPServer
 				errorMSG = "File already exists.";
 				break;
 		}
-
+		
 		for(int i = 0; i<errorMSG.length(); i++)
 		{
 			errorBuffer[i+4] = (byte)errorMSG.charAt(i);
 		}
 		errorBuffer[4+errorMSG.length()] = 0;
 		errorDatagramLength = errorMSG.length() +5;
-
+		
 		DatagramPacket outputDatagram = new DatagramPacket(errorBuffer, errorDatagramLength);
 		sendSocket.send(outputDatagram);
 	}
-
+	
 	/* Overridden method to ad an own error message */
 	private void send_ERR(int errID, DatagramSocket sendSocket, String errorMSG) throws IOException
 	{
 		System.out.println("Error " + errID + " sent");
 		int errorDatagramLength;
 		byte[] errorBuffer = new byte[BUFSIZE];
-
+		
 		ByteBuffer wrap = ByteBuffer.wrap(errorBuffer);
 		/* The Op to the first 2 bytes of buffer */
 		wrap.putShort((short) OP_ERR);
 		wrap.putShort(2, (short)errID);
-
+		
 		System.out.println("errorBuffer:");
 		System.out.println(errorBuffer[2] +" " + errorBuffer[3]);
-
+		
 		for(int i = 0; i<errorMSG.length(); i++)
 		{
 			errorBuffer[i+4] = (byte)errorMSG.charAt(i);
 		}
 		errorBuffer[4+errorMSG.length()] = 0;
 		errorDatagramLength = errorMSG.length() +5;
-
+		
 		DatagramPacket outputDatagram = new DatagramPacket(errorBuffer, errorDatagramLength);
 		sendSocket.send(outputDatagram);
 	}
-
+	
 	/**
 	 * Parses an ACK and returns true if the ACK is valid
 	 * @param ack the recieved ACK as a byte array
@@ -634,25 +667,25 @@ public class TFTPServer
 	private boolean parseACK(byte[] ack, short currentBlock) throws WrongOPException       // TODO, could be an ERROR (op 5) sent instead of ACK
 	{
 		boolean recievedCorrectACK = false;
-
+		
 		ByteBuffer byteBuffer = ByteBuffer.allocate(2);
 		byteBuffer.order(ByteOrder.BIG_ENDIAN);
 		byteBuffer.put(ack, 0, 2);
 		byteBuffer.flip();
 		short opcode = byteBuffer.getShort();
 		System.out.println("Ack OP code: " + opcode);
-
+		
 		if(opcode != OP_ACK)
 		{
-			throw new WrongOPException(""+opcode);
+			throw new WrongOPException("OP code was not the expected", ack);
 		}
-
+		
 		byteBuffer.clear();
 		byteBuffer.order(ByteOrder.BIG_ENDIAN);
 		byteBuffer.put(ack, 2, 2);
 		byteBuffer.flip();
 		short blockNumber = byteBuffer.getShort();
-
+		
 		System.out.println("Received block: " + blockNumber);
 		System.out.println("Expected block: " + currentBlock);
 		if(blockNumber == currentBlock)
@@ -664,8 +697,8 @@ public class TFTPServer
 			return false;
 		}
 	}
-
-	private boolean parseAndWriteData(byte[] data, short blockNumber, String requestedFile, int datagramLength) throws IOException
+	
+	private boolean parseAndWriteData(byte[] data, short blockNumber, String requestedFile, int datagramLength) throws IOException, WrongOPException
 	{
 		ByteBuffer byteBuffer = ByteBuffer.allocate(2);
 		byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -673,17 +706,17 @@ public class TFTPServer
 		byteBuffer.flip();
 		short opcode = byteBuffer.getShort();
 		System.out.println("Data OP code: " + opcode);
-
+		
 		if(opcode != OP_DAT)
 		{
-			return false;
+			throw new WrongOPException("Wasn't the expected data OP");
 		}
 		byteBuffer.clear();
 		byteBuffer.order(ByteOrder.BIG_ENDIAN);
 		byteBuffer.put(data, 2, 2);
 		byteBuffer.flip();
 		short dataBlockNumber = byteBuffer.getShort();
-
+		
 		System.out.println("BlockNumber: " + blockNumber);
 		if(blockNumber != dataBlockNumber)
 		{
@@ -696,7 +729,7 @@ public class TFTPServer
 			outputStream.write(data,4,datagramLength-4);
 			outputStream.close();
 		}
-
+		
 		return true;
 	}
 }
