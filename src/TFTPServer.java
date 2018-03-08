@@ -364,6 +364,7 @@ public class TFTPServer
 		while(remainingFileBytes >= 0)
 		{
 			blockNumber++;
+
 			/* Opcode: 2 bytes */
 			ByteBuffer wrap = ByteBuffer.wrap(buffer);
 			wrap.putShort((short) OP_DAT);
@@ -644,7 +645,8 @@ public class TFTPServer
 		byteBuffer.flip();
 		short blockNumber = byteBuffer.getShort();
 
-		System.out.println("BlockNumber: " + blockNumber);
+		System.out.println("Received block: " + blockNumber);
+		System.out.println("Expected block: " + currentBlock);
 		if(blockNumber == currentBlock)
 		{
 			return true;
