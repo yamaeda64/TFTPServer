@@ -397,6 +397,7 @@ public class TFTPServer
 
 			sendSocket.send(outputPacket);
 			System.out.println("packet sent, size: " + outputPacket.getLength());
+			System.out.println("Sent blockNumber: " + blockNumber);
 
 			boolean correctACK = false;
 			while(!correctACK) {
