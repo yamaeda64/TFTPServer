@@ -27,10 +27,11 @@ public class TFTPServer
 			System.err.printf("usage: java %s\n", TFTPServer.class.getCanonicalName());
 			System.exit(1);
 		}
+		
 		//Starting the server
 		try
 		{
-			TFTPServer server= new TFTPServer();
+			TFTPServer server = new TFTPServer();
 			server.start();
 		}
 		catch (SocketException e)
@@ -43,13 +44,13 @@ public class TFTPServer
 
 	private void start() throws SocketException, IOException
 	{
-		byte[] buf= new byte[BUFSIZE];
+		byte[] buf = new byte[BUFSIZE];
 
 		// Create socket
-		DatagramSocket socket= new DatagramSocket(null);
+		DatagramSocket socket = new DatagramSocket(null);
 
 		// Create local bind point
-		SocketAddress localBindPoint= new InetSocketAddress(TFTPPORT);
+		SocketAddress localBindPoint = new InetSocketAddress(TFTPPORT);
 		socket.bind(localBindPoint);
 
 		System.out.printf("Listening at port %d for new requests\n", TFTPPORT);
@@ -57,7 +58,6 @@ public class TFTPServer
 		// Loop to handle client requests
 		while (true)
 		{
-
 			final InetSocketAddress clientAddress = receiveFrom(socket, buf);
 
 			// If clientAddress is null, an error occurred in receiveFrom()
@@ -75,7 +75,7 @@ public class TFTPServer
 			}
 			catch(WrongOPException e)
 			{
-				System.out.println("Incoming stating packet was wrong OP");
+				System.out.println("Incoming starting packet was wrong OP");
 				continue;
 			}
 			catch(Exception e)
@@ -85,7 +85,6 @@ public class TFTPServer
 			}
 			System.out.println("outside: " + requestedFile);
 
-
 			new Thread()
 			{
 				public void run()
@@ -94,8 +93,9 @@ public class TFTPServer
 					{
 						TransferMode transferMode = parseTransferMode(buf);
 
-						DatagramSocket sendSocket= new DatagramSocket(0);  // Port 0 makes the port "random" which is required by TFTP
+						DatagramSocket sendSocket = new DatagramSocket(0);  // Port 0 makes the port "random" which is required by TFTP
 
+						System.out.println(clientAddress);
 						// Connect to client
 						sendSocket.connect(clientAddress);
 
@@ -169,7 +169,6 @@ public class TFTPServer
 		StringBuffer sb = new StringBuffer(new String(buf, modeStartIndex, index - modeStartIndex));
 		System.out.println("Parsed Mode: " + sb.toString());  // TODO, debug
 
-
 		TransferMode transferMode;
 		try
 		{
@@ -191,13 +190,15 @@ public class TFTPServer
 	private InetSocketAddress receiveFrom(DatagramSocket socket, byte[] buf) throws IOException
 	{
 		// Create datagram packet
-		DatagramPacket datagramPacket = new DatagramPacket(buf,buf.length);
+		DatagramPacket datagramPacket = new DatagramPacket(buf, buf.length);
 
 		// Receive packet
 		socket.receive(datagramPacket);
 		// Get client address and port from the packet
 		InetSocketAddress socketAddress = new InetSocketAddress(datagramPacket.getAddress(),datagramPacket.getPort());
-
+		System.out.println("SocketAddress: " + socketAddress);
+		
+		
 		return socketAddress;
 	}
 
@@ -210,12 +211,20 @@ public class TFTPServer
 	 */
 	private int ParseRQ(byte[] buf, StringBuffer requestedFile) throws WrongOPException
 	{
+		System.out.print("ParseRQ: ");
+		for(int i = 0; i < buf.length; i++) {
+			System.out.print(buf[i]);
+		}
+		System.out.println();
+		System.out.println();
+		
 		/* Parse the OpCode */
 		ByteBuffer byteBuffer = ByteBuffer.allocate(2);
 		byteBuffer.order(ByteOrder.BIG_ENDIAN);
 		byteBuffer.put(buf, 0, 2);
 		byteBuffer.flip();
 		short opcode = byteBuffer.getShort();
+		
 		if(opcode < 1 || opcode > 2)
 		{
 			throw new WrongOPException("Unexpected OP");
@@ -291,6 +300,7 @@ public class TFTPServer
 			}
 			catch(Exception e)
 			{
+				System.out.println("EXCEPTION: " + e.getMessage()); // TODO: Ta bort
 				send_ERR(0, sendSocket);
 			}
 		}
@@ -341,7 +351,6 @@ public class TFTPServer
 		{
 			throw new FileNotFoundException("The file could not be found in source folder");
 		}
-
 
 		long remainingFileBytes = outputfile.length();
 		short blockNumber = 0;
