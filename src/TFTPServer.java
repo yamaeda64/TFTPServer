@@ -426,6 +426,7 @@ public class TFTPServer
 					System.out.println("SocketTimeoutException thrown");
 					sendSocket.send(outputPacket);
 					System.out.println("packet sent again, size: " + outputPacket.getLength());
+					System.out.println("Sent blockNumber: " + blockNumber);
 				} catch (WrongOPException woe) {
 					System.out.println("WRONG OP EXCEPTION"); // TODO: Ta bort
 					// TODO, handle what op is incoming, probably an ERROR

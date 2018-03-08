@@ -99,6 +99,7 @@ public class TestWait {
 		while(hasMoreData)
 		{
 			blockNumber++;
+			System.out.println("BlockNumber normal: " + blockNumber);
 
 			/* Recieve the packet */
 			inPacket = new DatagramPacket(buffer, buffer.length, inetAddress,
@@ -115,13 +116,18 @@ public class TestWait {
 			boolean recievedData = parseAndWriteData(buffer, blockNumber, requestedFile, inPacket.getLength());
 			if(!slept) {
 				System.out.println("Waiting 5 seconds before sending ACK");
-				Thread.sleep(5000);
-				slept = true;
+				Thread.sleep(5000);	
 			}
 			
 			if(recievedData)
 			{
 				sendAck(sendSocket, blockNumber);
+			}
+			
+			if(!slept) {
+				blockNumber--;
+				System.out.println("BlockNUmber after slept: " + blockNumber);
+				slept = true;
 			}
 
 			if(inPacket.getLength()<512)
@@ -156,7 +162,8 @@ public class TestWait {
 		byteBuffer.flip();
 		short dataBlockNumber = byteBuffer.getShort();
 
-		System.out.println("BlockNumber: " + blockNumber);
+		System.out.println("parseAndWriteData got block: " + blockNumber);
+		System.out.println("parseAndWriteData expected block: " + dataBlockNumber);
 		if(blockNumber != dataBlockNumber)
 		{
 			return false;

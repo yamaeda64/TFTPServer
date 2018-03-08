@@ -174,7 +174,7 @@ public class TestWrongBlockNum {
 		short dataBlockNumber = byteBuffer.getShort();
 
 		System.out.println("parseAndWriteData got block: " + blockNumber);
-		System.out.println("Expected block: " + dataBlockNumber);
+		System.out.println("parseAndWriteData expected block: " + dataBlockNumber);
 		if(blockNumber != dataBlockNumber)
 		{
 			return false;
