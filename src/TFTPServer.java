@@ -412,7 +412,10 @@ public class TFTPServer
 					if(ack.getPort() != orgClientAddress.getPort())
 					{
 						System.out.println("Packet did not come from original sender");
-						DatagramSocket tempSocket = new DatagramSocket(ack.getSocketAddress());
+						DatagramSocket tempSocket = new DatagramSocket(null);
+						SocketAddress tempAddress = new InetSocketAddress(0);
+						SocketAddress incorrectClient = ack.getSocketAddress();
+						tempSocket.connect(incorrectClient);
 						send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
 					} else {
 						correctACK = parseACK(ACKBuffer,blockNumber);
@@ -439,7 +442,7 @@ public class TFTPServer
 					System.out.println("5 packets were sent, stopped sending more packets");
 					return false;
 				}
-			} 
+			}
 		}
 		return true;
 	}
@@ -484,8 +487,8 @@ public class TFTPServer
 				System.out.println("Packet did not come from original sender");
 				DatagramSocket tempSocket = new DatagramSocket(data.getSocketAddress());
 				send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
-			} 
-			else 
+			}
+			else
 			{
 				if(outputFile.getParentFile().getFreeSpace() - data.getLength() < 0)
 				{
@@ -602,7 +605,7 @@ public class TFTPServer
 
 		ByteBuffer wrap = ByteBuffer.wrap(errorBuffer);
 		/* The Op to the first 2 bytes of buffer */
-		wrap.putShort((short) OP_ERR);  
+		wrap.putShort((short) OP_ERR);
 		wrap.putShort(2, (short)errID);
 
 		System.out.println("errorBuffer:");
