@@ -1,4 +1,5 @@
 import exceptions.OutsideSourceFolderException;
+import exceptions.TooLargeDatagramException;
 import exceptions.WrongOPException;
 
 import java.io.*;
@@ -331,6 +332,10 @@ public class TFTPServer
 			{
 				
 			}
+			catch(TooLargeDatagramException e)
+			{
+				send_ERR(4, sendSocket, "The received datagram was larger than 516 bytes");
+			}
 			catch(Exception e)
 			{
 				System.out.println("EXCEPTION: " + e.getMessage()); // TODO: Ta bort
@@ -356,6 +361,10 @@ public class TFTPServer
 			{
 				
 			}
+			catch(TooLargeDatagramException e)
+			{
+				send_ERR(4, sendSocket, "The received datagram was larger than 516 bytes");
+			}
 			catch(Exception e)
 			{
 				send_ERR(0,sendSocket);
@@ -373,7 +382,8 @@ public class TFTPServer
 	/**
 	 To be implemented
 	 */
-	private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress) throws OutsideSourceFolderException, IOException, WrongOPException
+	private boolean send_DATA_receive_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress)
+						throws OutsideSourceFolderException, IOException, WrongOPException, TooLargeDatagramException
 	{
 		
 		File outputfile = new File(requestedFile);
@@ -471,6 +481,10 @@ public class TFTPServer
 				} catch (WrongOPException e) {
 					throw new WrongOPException("Not the expected OP", buffer);
 				}
+				catch(ArrayIndexOutOfBoundsException e)
+				{
+					throw new TooLargeDatagramException("The incoming datagram was larger than 516 bytes");
+				}
 				packetsSent++;
 				
 				// Returns false if 5 packets were sent but no correct ACK were received or socket timed out 5 times
@@ -483,7 +497,8 @@ public class TFTPServer
 		return true;
 	}
 	
-	private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress) throws IOException, OutsideSourceFolderException, WrongOPException
+	private boolean receive_DATA_send_ACK(String requestedFile, DatagramSocket sendSocket, InetSocketAddress orgClientAddress)
+						throws IOException, OutsideSourceFolderException, WrongOPException, TooLargeDatagramException
 	{
 		File outputFile = new File(requestedFile);
 		System.out.println("paretn size: " + outputFile.getParentFile().getFreeSpace());
@@ -583,6 +598,10 @@ public class TFTPServer
 				catch(SocketTimeoutException e)
 				{
 					continue;
+				}
+				catch(ArrayIndexOutOfBoundsException e)
+				{
+					throw new TooLargeDatagramException("The incoming datagram was larger than 516 bytes");
 				}
 				
 			}
