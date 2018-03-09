@@ -545,11 +545,12 @@ public class TFTPServer
 					// Check if data comes from the intended original sender
 					if(data.getPort() != orgClientAddress.getPort())
 					{
-						DatagramSocket tempSocket = new DatagramSocket(null);
-						SocketAddress tempAddress = new InetSocketAddress(0);
-						SocketAddress incorrectClient = data.getSocketAddress();
-						tempSocket.connect(incorrectClient);
-						send_ERR(5, tempSocket);   // Send on new socket to not disturb the transmission from original client
+						sendSocket.disconnect();
+						sendSocket.connect(data.getSocketAddress());
+						send_ERR(5, sendSocket);
+						sendSocket.disconnect();
+						sendSocket.connect(orgClientAddress);
+						
 					}
 					else
 					{
