@@ -75,14 +75,28 @@ public class TFTPServer
 			}
 			catch(WrongOPException e)
 			{
+				socket.connect(clientAddress);
 				System.out.println("Incoming starting packet was wrong OP");
+				send_ERR(4,socket,"Initial request was neither RRQ or WRQ");
+				socket.disconnect();
 				continue;
 				
+			}
+			catch(ArrayIndexOutOfBoundsException e)
+			{
+				socket.connect(clientAddress);
+				send_ERR(4,socket,"Filename was too long.");
+				socket.disconnect();
+				continue;
 			}
 			catch(Exception e)
 			{
 				System.out.println("Unhandled error on server while reading initial request");
+				socket.connect(clientAddress);
+				send_ERR(0,socket);
+				socket.disconnect();
 				continue;
+				
 			}
 			System.out.println("outside: " + requestedFile);
 			
