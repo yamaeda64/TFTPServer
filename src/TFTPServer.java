@@ -89,13 +89,22 @@ public class TFTPServer
 				reqtype = ParseRQ(buf, requestedFile);
 			}
 			catch(WrongOPException e)
-			{
-				socket.connect(clientAddress);
+			{	
+				byte[] data = (e.getData() == null) ? buf : e.getData();
+				short opcode = parseOP(data);
 				System.out.println("Incoming starting packet was wrong OP");
-				send_ERR(4,socket,"Initial request was neither RRQ or WRQ");
-				socket.disconnect();
-				continue;
 				
+				if(opcode == 5) 
+				{
+					System.out.println("Client sent the error: " + parseError(data));
+				}
+				else
+				{
+			        socket.connect(clientAddress);
+					send_ERR(4,socket,"Initial request was neither RRQ or WRQ");
+					socket.disconnect();
+				}		
+				continue;
 			}
 			catch(ArrayIndexOutOfBoundsException e)
 			{
@@ -111,7 +120,6 @@ public class TFTPServer
 				send_ERR(0,socket);
 				socket.disconnect();
 				continue;
-				
 			}
 			System.out.println("outside: " + requestedFile);
 			
@@ -318,7 +326,18 @@ public class TFTPServer
 			}
 			catch(WrongOPException e)
 			{
+				byte[] data = e.getData();
+				short tempOP = parseOP(data);
+				System.out.println("WrongOPException, OP: " + tempOP);
 				
+				if(tempOP == 5) 
+				{
+					System.out.println("Client sent the error: " + parseError(data));
+				}
+				else
+				{
+					send_ERR(4, sendSocket, "Request was not RRQ, WRQ, Data, Ack or Error");
+				}		
 			}
 			catch(TooLargeDatagramException e)
 			{
@@ -347,7 +366,18 @@ public class TFTPServer
 			}
 			catch(WrongOPException e)
 			{
+				byte[] data = e.getData();
+				short tempOP = parseOP(data);
+				System.out.println("WrongOPException OP: " + tempOP);
 				
+				if(tempOP == 5) 
+				{
+					System.out.println("Client sent the error: " + parseError(data));
+				}
+				else
+				{
+					send_ERR(4, sendSocket, "Request was not RRQ, WRQ, Data, Ack or Error");
+				}		
 			}
 			catch(TooLargeDatagramException e)
 			{
@@ -467,7 +497,9 @@ public class TFTPServer
 					System.out.println("packet sent again, size: " + outputPacket.getLength());
 					System.out.println("Sent blockNumber: " + blockNumber);
 				} catch (WrongOPException e) {
-					throw new WrongOPException("Not the expected OP", buffer);
+					byte[] data = (e.getData() == null) ? buffer : e.getData();
+					
+					throw new WrongOPException("Not the expected OP", data);
 				}
 				catch(ArrayIndexOutOfBoundsException e)
 				{
@@ -777,6 +809,53 @@ public class TFTPServer
 		
 		return true;
 	}
+	
+    
+    private String parseError(byte[] data) 
+    {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(2);
+        // Store the error code
+        byteBuffer.put(data, 2, 2);
+        byteBuffer.flip();
+        short errorCode = byteBuffer.getShort();
+        
+        /* Parse error message from the byte array */
+        boolean loop = true;        
+        int index = 3;
+        int bytesToCheck = 0;
+        while(loop)
+        {
+            index++;
+            if(data[index] == 0)
+            {
+                loop = false;
+            } 
+            else 
+            {
+                bytesToCheck++;
+            }
+        }
+        
+        String errorMsg = "";
+        for(int i = 0; i < bytesToCheck; i++) 
+        {
+            errorMsg += (char) data[4 + i];
+        }
+        
+        String fullErrorMsg = "Error code " + errorCode + " - Message: \"" + errorMsg + "\"";
+        return fullErrorMsg;
+    }
+    
+    private short parseOP(byte[] data) 
+    {
+    	  ByteBuffer byteBuffer = ByteBuffer.allocate(2);
+          byteBuffer.order(ByteOrder.BIG_ENDIAN);
+          byteBuffer.put(data, 0, 2);
+          byteBuffer.flip();
+          short opcode = byteBuffer.getShort();
+          
+          return opcode;
+    }
 }
 
 
