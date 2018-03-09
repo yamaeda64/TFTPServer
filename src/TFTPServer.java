@@ -288,18 +288,6 @@ public class TFTPServer
 		}
 		StringBuffer sb = new StringBuffer(new String(buf, modeStartIndex, index - modeStartIndex));
 		System.out.println("Parsed Mode: " + sb.toString());  // TODO, debug
-
-		/*  TODO   NEED TO BE READ SOMEWHERE ELSE, or STATIC variable */
-		/*
-        try
-        {
-            transferMode = TransferMode.valueOf(sb.toString().toUpperCase());
-        } catch(IllegalArgumentException e)
-        {
-            transferMode = TransferMode.ILLEGAL;
-        }
-
-		 */
 		
 		return opcode;
 	}
