@@ -58,12 +58,26 @@ public class TFTPServer
 		// Loop to handle client requests
 		while (true)
 		{
-			final InetSocketAddress clientAddress = receiveFrom(socket, buf);
-			
-			// If clientAddress is null, an error occurred in receiveFrom()
-			if (clientAddress == null)
+			InetSocketAddress clientAddress;
+			try
+			{
+				clientAddress = receiveFrom(socket, buf);
+				
+				
+				// If clientAddress is null, an error occurred in receiveFrom()
+				if(clientAddress == null)
+					continue;
+			}
+			catch(ArrayIndexOutOfBoundsException e)
+			{
+				System.out.println("Initial request was too long");
 				continue;
-			
+			}
+			catch(Exception e)
+			{
+				System.out.println("something was wrong with receiving initial request");
+				continue;
+			}
 			final StringBuffer requestedFile = new StringBuffer();
 			
 			//  final TransferMode transferMode = TransferMode.ILLEGAL; // initally ILLEGAL, and changed if parsed correctly
