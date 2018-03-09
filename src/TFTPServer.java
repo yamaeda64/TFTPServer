@@ -75,9 +75,7 @@ public class TFTPServer
 			}
 			catch(WrongOPException e)
 			{
-				handleWrongOP(e.getData());
 				System.out.println("Incoming starting packet was wrong OP");
-				System.out.println(e.getMessage());
 				continue;
 			}
 			catch(Exception e)
@@ -229,7 +227,6 @@ public class TFTPServer
 		
 		if(opcode < 1 || opcode > 2)
 		{
-			String errMessage = parseError(buf);
 			throw new WrongOPException("Unexpected OP");
 		}
 
@@ -695,62 +692,6 @@ public class TFTPServer
 		}
 
 		return true;
-	}
-	
-	private String parseError(byte[] data) 
-	{
-		ByteBuffer byteBuffer = ByteBuffer.allocate(2);
-		byteBuffer.put(data, 2, 2);
-		byteBuffer.flip();
-		short errorCode = byteBuffer.getShort();
-		System.out.println("Error code: " + errorCode);
-		
-		/* Parse the ErrMSG */
-		boolean loop = true;        
-		int index = 3;
-		int bytesToCheck = 0;
-		while(loop)
-		{
-			index++;
-			if(data[index] == 0)
-			{
-				loop = false;
-			} 
-			else 
-			{
-				bytesToCheck++;
-			}
-		}
-		
-		String errorMsg = "";
-		for(int i = 0; i < bytesToCheck; i++) 
-		{
-			errorMsg += (char) data[4 + i];
-		}
-		
-		String fullErrorMsg = "Error code " + errorCode + " - Error message: \"" + errorMsg + "\"";
-		
-		System.out.println(fullErrorMsg);
-
-		return errorMsg;
-	}
-	
-	private void handleWrongOP(byte[] data) 
-	{
-		ByteBuffer byteBuffer = ByteBuffer.allocate(2);
-		byteBuffer.order(ByteOrder.BIG_ENDIAN);
-		byteBuffer.put(data, 0, 2);
-		byteBuffer.flip();
-		short opcode = byteBuffer.getShort();
-			
-		if(opcode == 5) 
-		{
-			System.out.println("Client sent: " + parseError(data));
-		} 
-		else 
-		{
-			System.out.println("Wrong OP code: " + opcode);
-		}
 	}
 }
 

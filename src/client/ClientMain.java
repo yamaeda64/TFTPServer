@@ -12,7 +12,7 @@ public class ClientMain {
 		System.out.println("1: No empty byte between file name and mode(octet)");
 		System.out.println("2: Wrong OP code");
 		System.out.println("3: Test wait 5 seconds before sending ACK");
-		System.out.println("4: Send wrong block number once");
+		System.out.println("5: Send wrong block number once");
 
 		System.out.print("\nYour choice: ");
 		Scanner in = new Scanner(System.in);
@@ -31,7 +31,7 @@ public class ClientMain {
 				case 3: TestWait.runTest();
 				break;
 				
-				case 4: TestWrongBlockNum.runTest();
+				case 5: TestWrongBlockNum.runTest();
 				break;
 			}
 	}
