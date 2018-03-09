@@ -47,25 +47,39 @@ public class TestWrongOP {
 		//        -----------------------------------------------
 		// RRQ/  | 01/02 |  Filename  |   0  |    Mode    |   0  |
 		// WRQ    -----------------------------------------------
-		byte[] request = new byte[2 + fileName.length() + 1 + mode.length() + 1];
+		
+		String errorMsg = "This is an error";
+		
+		byte[] request = new byte[2 + 2 + errorMsg.length() + 1];
 
 		int index = 0;
 		request[index] = 0;
 		index++;
 		request[index] = 8; // Wrong OP code for test
 		index++;
-		for (int i = 0; i < fileName.length(); i++) {
-			request[index] = (byte) fileName.charAt(i);
-			index++;
-		}
-		request[index] = 0;
+		request[index] = 0; // Wrong OP code for test
 		index++;
-
-		for (int i = 0; i < mode.length(); i++) {
-			request[index] = (byte) mode.charAt(i);
+		request[index] = 6; // Wrong OP code for test
+		index++;
+//		for (int i = 0; i < fileName.length(); i++) {
+//			request[index] = (byte) fileName.charAt(i);
+//			index++;
+//		}
+		
+	
+		for(int i = 0; i < errorMsg.length(); i++) {
+			request[index] = (byte) errorMsg.charAt(i);
 			index++;
 		}
+		
 		request[index] = 0;
+//		index++;
+//
+//		for (int i = 0; i < mode.length(); i++) {
+//			request[index] = (byte) mode.charAt(i);
+//			index++;
+//		}
+//		request[index] = 0;
 		return request;
 	}
 

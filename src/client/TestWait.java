@@ -114,6 +114,8 @@ public class TestWait {
 			System.out.println();
 
 			boolean receivedData = false;
+			
+			// Ignores the package that is sent before the sleep
 			if(!slept) {
 				System.out.println("Waiting 5 seconds");
 				Thread.sleep(5000);
