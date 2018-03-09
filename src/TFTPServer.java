@@ -546,6 +546,10 @@ public class TFTPServer
 								System.out.println("has more data");
 							}
 						}
+						else
+						{
+							sendAck(sendSocket, (short)(blockNumber-1));
+						}
 					}
 				}
 				catch(SocketTimeoutException e)
@@ -574,7 +578,7 @@ public class TFTPServer
 		wrap.putShort(2, blockNumber);
 		
 		System.out.println("OP: " + ackBuffer[1]);
-	
+		
 		DatagramPacket outputDatagram = new DatagramPacket(ackBuffer, 4);
 		System.out.println("created AckPacket");
 		sendSocket.send(outputDatagram);
@@ -726,8 +730,13 @@ public class TFTPServer
 		{
 			File outputFile = new File(requestedFile);
 			FileOutputStream outputStream = new FileOutputStream(outputFile,true);
-			outputStream.write(data,4,datagramLength-4);
+			System.out.println("dataLenght" + (datagramLength-4));
+			if(datagramLength-4 > 0)
+			{
+				outputStream.write(data, 4, datagramLength - 4);
+			}
 			outputStream.close();
+			
 		}
 		
 		return true;
